@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Motion Flash</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0047AB; /* Deep Blue */
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.05s ease;
+        }
+
+        #status {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #speed-display {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 12px;
+            background-color: white;
+            color: #0047AB;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .flashing {
+            background-color: white !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status">
+        <p>iOS requires permission to use motion sensors.</p>
+        <button id="start-button">Start App</button>
+    </div>
+
+    <div id="display" style="display: none; text-align: center;">
+        <div>Movement Magnitude:</div>
+        <div id="speed-display">0.0</div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('start-button');
+        const statusDiv = document.getElementById('status');
+        const displayDiv = document.getElementById('display');
+        const speedText = document.getElementById('speed-display');
+        const body = document.body;
+
+        let lastFlashTime = 0;
+
+        function handleMotion(event) {
+            // Calculate total magnitude of movement (acceleration)
+            const acc = event.acceleration;
+            const magnitude = Math.sqrt(acc.x ** 2 + acc.y ** 2 + acc.z ** 2);
+            
+            // Filter out minor noise
+            const cleanMagnitude = magnitude > 0.5 ? magnitude.toFixed(2) : 0;
+            speedText.innerText = cleanMagnitude;
+
+            // Flash logic: faster movement = shorter interval between flashes
+            const now = Date.now();
+            // Flash threshold: only flash if moving significantly
+            if (magnitude > 2) {
+                // The interval decreases as magnitude increases (capped at 50ms)
+                const interval = Math.max(50, 1000 / magnitude); 
+                
+                if (now - lastFlashTime > interval) {
+                    flashScreen();
+                    lastFlashTime = now;
+                }
+            }
+        }
+
+        function flashScreen() {
+            body.classList.add('flashing');
+            setTimeout(() => {
+                body.classList.remove('flashing');
+            }, 40); // Flash duration
+        }
+
+        startBtn.addEventListener('click', () => {
+            // Check if iOS 13+ permission is needed
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('devicemotion', handleMotion);
+                            statusDiv.style.display = 'none';
+                            displayDiv.style.display = 'block';
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Non-iOS or older versions
+                window.addEventListener('devicemotion', handleMotion);
+                statusDiv.style.display = 'none';
+                displayDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
